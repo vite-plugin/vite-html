@@ -1,0 +1,24 @@
+{
+  "name": "vite-html",
+  "version": "0.0.0",
+  "description": "html template for vite",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vite-plugin/vite-html.git"
+  },
+  "keywords": [
+    "vite",
+    "html",
+    "html-template"
+  ],
+  "author": "younglei <youngleish@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vite-plugin/vite-html/issues"
+  },
+  "homepage": "https://github.com/vite-plugin/vite-html#readme"
+}

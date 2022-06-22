@@ -32,24 +32,28 @@ export default function viteHtml(options: Options | Options[] = {}): Plugin[] {
     configResolved(_config) {
       config = _config
     },
-    transformIndexHtml(html, ctx) {
-      const opt = opts.find(opt => opt._url === ctx.path) || {}
+    transformIndexHtml: {
+      enforce: 'pre',
+      transform(html, ctx) {
+        const opt = opts.find(opt => opt._url === ctx.path) || {}
 
-      // Inject js
-      if (opt.inject) {
-        // TODO: inject js to anywhere
-        html = html.replace(
-          '</body>',
-          `  <script src="${opt.inject}" type="module"></script>\n  </body>`,
-        )
+        // Inject js
+        if (opt.inject) {
+          // TODO: inject js to anywhere
+          html = html.replace(
+            '</body>',
+            `  <script src="${opt.inject}" type="module"></script>\n  </body>`,
+          )
+        }
+
+        // It's ejs template
+        if (html.includes('<%')) {
+          html = template(html)(opt.data)
+        }
+
+        return html
+
       }
-
-      // It's ejs template
-      if (html.includes('<%')) {
-        html = template(html)(opt.data)
-      }
-
-      return html
     },
   }
 

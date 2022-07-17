@@ -1,6 +1,7 @@
+import path from 'path'
 import {
-  Plugin,
-  ResolvedConfig,
+  type Plugin,
+  type UserConfig,
   normalizePath,
 } from 'vite'
 import { cleanUrl } from 'vite-plugin-utils'
@@ -30,17 +31,25 @@ export interface Options {
 
 export default function viteHtml(options: Options | Options[] = {}): Plugin[] {
   const opts = mappingTemplate(Array.isArray(options) ? options : [options])
-  let config: ResolvedConfig
+  let root: string; const resolveRoot = (config: UserConfig) => {
+    // https://github.com/vitejs/vite/blob/cc980b09444f67bdcd07481edf9e0c0de6b9b5bd/packages/vite/src/node/config.ts#L442-L445
+    root = config.root ? path.resolve(config.root) : process.cwd()
+  }
+  const resolvePath = (template: string, prefer: 'short' | 'long') => {
+    template = normalizePath(template)
+    return prefer === 'long'
+      // Rollup input must be absolute path
+      ? path.resolve(root, template)
+      // For support absolute path on Vite serve
+      : ('/' + template.replace(root, ''))
+  }
 
   const plugin: Plugin = {
     name: 'vite-html',
-    configResolved(_config) {
-      config = _config
-    },
     transformIndexHtml: {
       enforce: 'pre',
       transform(html, ctx) {
-        const opt = opts.find(opt => opt._url === ctx.path) || {}
+        const opt = opts.find(opt => opt._url === ctx.path) || {} as Options
 
         // Inject js
         if (opt.inject) {
@@ -57,7 +66,6 @@ export default function viteHtml(options: Options | Options[] = {}): Plugin[] {
         }
 
         return html
-
       }
     },
   }
@@ -66,6 +74,9 @@ export default function viteHtml(options: Options | Options[] = {}): Plugin[] {
     {
       ...plugin,
       apply: 'serve',
+      config(conf) {
+        resolveRoot(conf)
+      },
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           let url = req.url ? cleanUrl(req.url) : ''
@@ -75,8 +86,8 @@ export default function viteHtml(options: Options | Options[] = {}): Plugin[] {
           const opt = opts.find(opt => opt.template && opt.template[url.slice(1)])
           if (opt) {
             const [, template] = Object.entries(opt.template)[0]
-            // `template.replace()` for support absolute path
-            req.url = normalizePath('/' + template.replace(config.root, ''))
+            req.url = resolvePath(template, 'short')
+
             // Useful in `transformIndexHtml` hook
             opt._url = req.url
           }
@@ -88,12 +99,37 @@ export default function viteHtml(options: Options | Options[] = {}): Plugin[] {
     {
       ...plugin,
       apply: 'build',
-      // TODO: vite build
+      config(conf) {
+        resolveRoot(conf)
+
+        if (!conf.build) conf.build = {}
+        if (!conf.build.rollupOptions) conf.build.rollupOptions = {}
+        if (!conf.build.rollupOptions.input) conf.build.rollupOptions.input = {}
+
+        let input = conf.build.rollupOptions.input
+        if (typeof input === 'string' || Array.isArray(input)) {
+          const inputs = opts.map(opt => Object.values(opt.template)[0])
+          input = inputs.concat(input)
+        } else {
+          opts.forEach(opt => {
+            const [name, template] = Object.entries(opt.template)[0]
+            Object.assign(input, { [name]: resolvePath(template, 'long') })
+
+            // Useful in `transformIndexHtml` hook
+            opt._url = resolvePath(template, 'short')
+          })
+        }
+      },
     }
   ]
 }
 
-function mappingTemplate(options: Options[]): Options[] {
+function mappingTemplate(
+  options: Options[]
+): (Omit<Options, 'template'> & {
+  template: { [entryAlias: string]: string }
+})[] {
+  // @ts-ignore
   return options.map(opts => {
     const { template } = opts
     if (typeof template === 'string') {

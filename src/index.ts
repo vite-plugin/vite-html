@@ -6,6 +6,11 @@ import {
 import { cleanUrl } from 'vite-plugin-utils'
 import template from 'lodash.template'
 
+// Limitations:
+// `ejs` `nunjucks` `handlebars` and other tempaltes must be written in the `.html` file.
+// Any other file types will be considered static files by Vite.
+// see: https://github.com/vitejs/vite/blob/344642ad630d8658308dbf707ed805cb04b49d58/packages/vite/src/node/server/middlewares/static.ts#L77
+
 export interface Options {
   /** Value of script src */
   inject?: string

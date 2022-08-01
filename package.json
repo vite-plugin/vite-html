@@ -18,7 +18,10 @@
   "license": "MIT",
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:dev": "vite -c test/vite.config.js",
+    "test:build": "vite -c test/vite.config.js build",
+    "test:preview": "vite -c test/vite.config.js preview"
   },
   "dependencies": {
     "lodash.template": "^4.5.0",
